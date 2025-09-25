@@ -98,6 +98,7 @@ func (pod *Pod) Kill() (uint32, error) {
 	return code, nil
 
 	case <-time.After(10 * time.Second):
+	fmt.Println("sigkill killed")
 	if err := (*pod.task).Kill(pod.ctx, syscall.SIGKILL); err != nil {
 		return 0, fmt.Errorf("failed to SIGKILL task: %w", err)
 	}
@@ -105,6 +106,21 @@ func (pod *Pod) Kill() (uint32, error) {
 	code, _, err := status.Result()
 	return code, err
 	}
+}
+func (pod *Pod) Delete() error {
+	status, err := (*pod.task).Status(pod.ctx)
+	fmt.Println(status)
+	if err != nil {
+		return err
+	}
+	if status.Status != "stopped" {
+		return fmt.Errorf("task still running, cannot delete container")
+	}
+  if _, err := (*pod.task).Delete(pod.ctx); err != nil {
+    return fmt.Errorf("failed to delete task: %w", err)
+  }
+
+	return pod.container.Delete(pod.ctx)
 }
 
 func main()  {
@@ -143,6 +159,12 @@ func main()  {
     }
 
     log.Printf("Pod %s started", pod.Id)
+	}
+	for _, pod:= range AllPods {
+		code, err := pod.Kill()
+		fmt.Println(code, err)
+    e := pod.Delete()
+		fmt.Println(e)
 	}
 }
 
