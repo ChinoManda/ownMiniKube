@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"fmt"
-
+  "ownkube/core"
 	"github.com/spf13/cobra"
 )
 
@@ -15,7 +15,14 @@ var listpodsCmd = &cobra.Command{
 	Use:   "listpods",
 	Short: "List all alive pods",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("listpods called")
+		cli := core.InitClient()
+		ctx := core.InitNamespace()
+		containers := core.ListPods(cli, ctx)
+		for _, c:= range containers {
+    fmt.Println("ID:", c.ID())// ID del contenedor
+		img, _ := c.Image(ctx)
+    fmt.Println("Image:", img)         // La imagen asociada al contenedor
+		}
 	},
 }
 

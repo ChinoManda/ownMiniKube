@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"os"
-  "ownkube/main.go"
 	"github.com/spf13/cobra"
 )
 

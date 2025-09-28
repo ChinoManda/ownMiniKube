@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -9,8 +9,8 @@ import (
         containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/containerd/v2/pkg/cio"
+	"github.com/containerd/containerd/namespaces"
 	"github.com/google/uuid"
-	"ownkube/cmd"
 )
 
 type Pod struct {
@@ -21,6 +21,45 @@ type Pod struct {
 	task     *containerd.Task
   statusCh  <-chan containerd.ExitStatus
 }
+func InitClient()(*containerd.Client) {
+    var err error
+		Client, err := containerd.New("/run/containerd/containerd.sock")
+    if err != nil {
+        log.Fatalf("No se pudo crear el client: %v", err)
+    }
+		return Client
+}
+func InitNamespace()(context.Context)  {	
+	ctx := namespaces.WithNamespace(context.Background(), "ownkube")
+	return ctx
+}
+
+func GetPodByID(ctx context.Context, client *containerd.Client, id string) (*Pod, error) {
+	c, err := client.LoadContainer(ctx, id)
+		if err != nil {
+		return nil, err
+	}
+	var (
+		task    containerd.Task
+		statusC <-chan containerd.ExitStatus
+	)
+	t, err := c.Task(ctx, cio.Load)
+	if err == nil {
+		task = t
+		statusC, _ = t.Wait(ctx)
+	} else {
+		task = nil
+		statusC = nil
+	}
+	return &Pod{
+		Id:        id,
+		client:    client,
+		ctx:       ctx,
+		container: c,
+		task:      &task,    
+		statusCh:  statusC,  
+	}, nil
+}
 
 func PullImage(client *containerd.Client, ctx context.Context, registryImage string) (containerd.Image, error) {
     image, err := client.Pull(ctx, registryImage, containerd.WithPullUnpack)
@@ -30,6 +69,26 @@ func PullImage(client *containerd.Client, ctx context.Context, registryImage str
     log.Printf("Successfully pulled image %s\n", image.Name())
     return image, nil
 }
+
+func ListPods(client *containerd.Client, ctx context.Context) []containerd.Container {
+	containers, _:= client.Containers(ctx)
+	return containers
+}
+
+func ListRunningPods(containers []containerd.Container, ctx context.Context) ([]containerd.Container)  {
+	var running []containerd.Container
+			for _,c := range containers {
+			task, err:= c.Task(ctx, nil)
+			if err != nil {
+				continue
+			}
+			stat, _ := task.Status(ctx)
+      if (stat.Status == "running"){
+				running = append(running, c)
+			}
+		}
+		return running
+	}
 
 func NewPod(client *containerd.Client, ctx context.Context, image containerd.Image, name string) (*Pod, error) {
 	id := generateNewID(name)
@@ -75,7 +134,7 @@ func (pod *Pod) Run() error {
 		return err
 	}
 
-	log.Println("task started")
+	fmt.Println("task started")
 	return nil
 }
 
@@ -122,56 +181,3 @@ func (pod *Pod) Delete() error {
 
 	return pod.container.Delete(pod.ctx)
 }
-
-func main()  {
-	cmd.Execute()
-	/*
-	cli, err := containerd.New("/run/containerd/containerd.sock")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer cli.Close()
-
-	ctx := namespaces.WithNamespace(context.Background(), "own-kube")
-  image, err := PullImage(cli, ctx, "docker.io/chinomandarin/demo:pythonapp.1.0")
-  if err != nil {
-    log.Fatal(err)
-  }
- 	AllPods := []*Pod{}
- 	for i := 0; i < 5; i++ {
-    pod, err := NewPod(cli, ctx, image, fmt.Sprintf("PythonPod-%d", i))
-    if err != nil {
-        log.Fatal(err)
-    }
-    AllPods = append(AllPods, pod)
-	}
-	for _, pod := range AllPods {
-    task, err := pod.container.NewTask(pod.ctx, cio.NewCreator(cio.WithStdio))
-    if err != nil {
-        log.Fatalf("failed to create task: %v", err)
-    }
-    pod.task = &task
-    exitStatusC, err := task.Wait(pod.ctx)
-    if err != nil {
-        log.Fatalf("failed to wait for task: %v", err)
-    }
-    pod.statusCh = exitStatusC
-    if err := task.Start(pod.ctx); err != nil {
-        log.Fatalf("failed to start task: %v", err)
-    }
-
-    log.Printf("Pod %s started", pod.Id)
-	}
-	for _, pod:= range AllPods {
-		code, err := pod.Kill()
-		fmt.Println(code, err)
-    e := pod.Delete()
-		fmt.Println(e)
-	}
-*/
-}
-
-
-
-
-
