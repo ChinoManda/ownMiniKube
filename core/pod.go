@@ -6,6 +6,7 @@ import (
 	"log"
 	"syscall"
 	"time"
+	"strings"
         containerd "github.com/containerd/containerd/v2/client"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/containerd/v2/pkg/cio"
@@ -89,6 +90,43 @@ func ListRunningPods(containers []containerd.Container, ctx context.Context) ([]
 		}
 		return running
 	}
+func FilterImage(containers []containerd.Container, ctx context.Context, fullImage string) ([]containerd.Container){
+	var matchingImage []containerd.Container
+	idx := strings.LastIndex(fullImage, ":")
+  baseImage := fullImage
+  if idx != -1 {
+    baseImage = fullImage[:idx]
+  }
+
+	for _, c := range containers {
+		img, _ := c.Image(ctx)
+   if img.Name() == baseImage{
+		 matchingImage = append(matchingImage, c)
+	 }
+	}
+	return matchingImage
+}
+
+func RollingUpdate(containers []containerd.Container, ctx context.Context, Image string, cli *containerd.Client) (error) {
+  img, _ := PullImage(cli, ctx, Image)
+	for _, c := range containers {
+		p, err := NewPod(cli, ctx, img, c.ID())
+   if err!=nil{
+		 return err
+	 }
+	 Rerr := p.Run()
+  if Rerr!=nil{
+		 return Rerr
+	 }
+
+	 pod, _ := GetPodByID(ctx, cli, c.ID())
+		killCode, killErr := pod.Kill()
+		fmt.Println(killCode, killErr)
+	  delErr := pod.Delete()
+		fmt.Println(delErr)
+	}
+	return nil
+}
 
 func NewPod(client *containerd.Client, ctx context.Context, image containerd.Image, name string) (*Pod, error) {
 	id := generateNewID(name)
