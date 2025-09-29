@@ -109,8 +109,9 @@ func FilterImage(containers []containerd.Container, ctx context.Context, fullIma
 
 func RollingUpdate(containers []containerd.Container, ctx context.Context, Image string, cli *containerd.Client) (error) {
   img, _ := PullImage(cli, ctx, Image)
+	fmt.Println(img)
 	for _, c := range containers {
-		p, err := NewPod(cli, ctx, img, c.ID())
+		p, err := NewPod(cli, ctx, img, "Redeployed")
    if err!=nil{
 		 return err
 	 }

@@ -18,7 +18,8 @@ var (
 var deployCmd = &cobra.Command{
 	Use:   "deploy",
 	Short: "A brief description of your command",
-	RunE: func(cmd *cobra.Command, args []string) error {	
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println(Image)
 		cli := core.InitClient()
 		ctx := core.InitNamespace()
 		containers := core.ListPods(cli, ctx)
@@ -34,8 +35,12 @@ var deployCmd = &cobra.Command{
 	 }
 	 if len(running) == 0 {
 		 img, _ := core.PullImage(cli, ctx, Image) 
-		 _, err := core.NewPod(cli, ctx, img, "AutoDeployed")
-		 return err
+		 pod, err := core.NewPod(cli, ctx, img, "AutoDeployed")
+		 if err != nil {
+			 return err
+		 }
+		 Rerr := pod.Run()
+		 return Rerr
 	 }
 	 return nil
 	},
@@ -43,7 +48,7 @@ var deployCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(deployCmd)
-  deployCmd.Flags().StringVarP(&image, "image", "i", "", "Image name without tag")
+  deployCmd.Flags().StringVarP(&Image, "image", "i", "", "Image name without tag")
 
 	// Here you will define your flags and configuration settings.
 
