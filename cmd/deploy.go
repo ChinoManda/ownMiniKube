@@ -24,7 +24,8 @@ var deployCmd = &cobra.Command{
 		ctx := core.InitNamespace()
 		containers := core.ListPods(cli, ctx)
 		running := core.ListRunningPods(containers, ctx)
-	 if len(running) > 0 {
+		matching := core.FilterImage(running, ctx, Image)
+	 if len(matching) > 0 {
     err := core.RollingUpdate(running, ctx, Image, cli)
 		if err == nil{
 			fmt.Println("bien")
@@ -33,7 +34,7 @@ var deployCmd = &cobra.Command{
 		fmt.Println("mal")
 		return  err
 	 }
-	 if len(running) == 0 {
+	 if len(matching) == 0 {
 		 img, _ := core.PullImage(cli, ctx, Image) 
 		 pod, err := core.NewPod(cli, ctx, img, "AutoDeployed")
 		 if err != nil {
