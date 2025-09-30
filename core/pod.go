@@ -97,10 +97,16 @@ func FilterImage(containers []containerd.Container, ctx context.Context, fullIma
   if idx != -1 {
     baseImage = fullImage[:idx]
   }
-
+ fmt.Println(baseImage)
 	for _, c := range containers {
 		img, _ := c.Image(ctx)
-   if img.Name() == baseImage{
+		idx := strings.LastIndex(img.Name(), ":")
+ 		 imgName := img.Name()
+ 		 if idx != -1 {
+    imgName = img.Name()[:idx]
+  }
+		fmt.Println(imgName)
+   if imgName == baseImage{
 		 matchingImage = append(matchingImage, c)
 	 }
 	}
